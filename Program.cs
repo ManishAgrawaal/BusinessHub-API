@@ -15,8 +15,14 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        // Add services to the container.
+        // =========================================================
+        // Controllers
+        // =========================================================
         builder.Services.AddControllers();
+
+        // =========================================================
+        // CORS
+        // =========================================================
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("MtsReactPolicy", policy =>
@@ -24,15 +30,20 @@ public class Program
                 policy
                     .WithOrigins(
                         "http://localhost:5173",
-                        "https://localhost:5173"
+                        "https://localhost:5173",
+                        "https://manishtechnologysolution.com",
+                        "https://www.manishtechnologysolution.com"
                     )
                     .AllowAnyHeader()
                     .AllowAnyMethod();
             });
         });
 
-        // OpenAPI
+        // =========================================================
+        // OpenAPI / Swagger
+        // =========================================================
         builder.Services.AddOpenApi();
+
         builder.Services.AddSwaggerGen(options =>
         {
             options.AddSecurityDefinition(
@@ -54,22 +65,32 @@ public class Program
                 });
         });
 
+        // =========================================================
         // Database
+        // =========================================================
         builder.Services.AddDbContext<MtsDbContext>(options =>
             options.UseSqlServer(
                 builder.Configuration.GetConnectionString("MtsConnection")));
+
+        // =========================================================
+        // Services
+        // =========================================================
         builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
         builder.Services.AddScoped<AuthService>();
+
+        // =========================================================
         // JWT Configuration
+        // =========================================================
         var jwtKey = builder.Configuration["Jwt:Key"];
 
         if (string.IsNullOrWhiteSpace(jwtKey))
         {
-            throw new InvalidOperationException("JWT Key is not configured.");
+            throw new InvalidOperationException(
+                "JWT Key is not configured.");
         }
 
-        builder.Services.AddAuthentication(
-            JwtBearerDefaults.AuthenticationScheme)
+        builder.Services
+            .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
                 options.TokenValidationParameters =
@@ -92,33 +113,44 @@ public class Program
                     };
             });
 
+        // =========================================================
+        // Build Application
+        // =========================================================
         var app = builder.Build();
 
-        // Configure the HTTP request pipeline.
-        if (app.Environment.IsDevelopment())
-        {
-            app.MapOpenApi();
+        // =========================================================
+        // OpenAPI / Swagger
+        // =========================================================
+        app.MapOpenApi();
 
-            app.UseSwagger();
+        app.UseSwagger();
 
-            app.UseSwaggerUI();
-        }
+        app.UseSwaggerUI();
 
+        // =========================================================
+        // HTTPS
+        // =========================================================
         app.UseHttpsRedirection();
+
+        // =========================================================
+        // CORS
+        // =========================================================
         app.UseCors("MtsReactPolicy");
 
+        // =========================================================
+        // Authentication & Authorization
+        // =========================================================
         app.UseAuthentication();
         app.UseAuthorization();
 
-        // JWT Authentication
-        app.UseAuthentication();
-
-        // Authorization
-        app.UseAuthorization();
-
+        // =========================================================
         // Controllers
+        // =========================================================
         app.MapControllers();
 
+        // =========================================================
+        // Run Application
+        // =========================================================
         app.Run();
     }
 }
