@@ -1,0 +1,14 @@
+bin/
+obj/
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+appsettings.Development.json
+appsettings.Local.json
+.env
+.env.*
+!.env.example
+publish/
+wwwroot/uploads/
