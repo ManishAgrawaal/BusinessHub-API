@@ -1,11 +1,15 @@
+using System.Text;
+
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+
 using MTS_API.Data;
 using MTS_API.Models;
 using MTS_API.Services;
-using System.Text;
+
+using Resend;
 
 namespace MTS_API;
 
@@ -18,11 +22,33 @@ public class Program
         // =========================================================
         // Controllers
         // =========================================================
+
         builder.Services.AddControllers();
+
+
+        // =========================================================
+        // Resend Email Service
+        // =========================================================
+
+        builder.Services
+            .AddOptions<ResendClientOptions>()
+            .Configure(options =>
+            {
+                options.ApiToken =
+                    builder.Configuration["Resend:ApiKey"];
+            });
+
+        builder.Services.AddHttpClient<ResendClient>();
+
+        builder.Services.AddTransient<IResend, ResendClient>();
+
+        builder.Services.AddScoped<IEmailService, EmailService>();
+
 
         // =========================================================
         // CORS
         // =========================================================
+
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("MtsReactPolicy", policy =>
@@ -39,9 +65,11 @@ public class Program
             });
         });
 
+
         // =========================================================
         // OpenAPI / Swagger
         // =========================================================
+
         builder.Services.AddOpenApi();
 
         builder.Services.AddSwaggerGen(options =>
@@ -59,28 +87,38 @@ public class Program
             options.AddSecurityRequirement(document =>
                 new Microsoft.OpenApi.OpenApiSecurityRequirement
                 {
-                    [new Microsoft.OpenApi.OpenApiSecuritySchemeReference(
-                        "Bearer",
-                        document)] = []
+                    [
+                        new Microsoft.OpenApi.OpenApiSecuritySchemeReference(
+                            "Bearer",
+                            document)
+                    ] = []
                 });
         });
+
 
         // =========================================================
         // Database
         // =========================================================
+
         builder.Services.AddDbContext<MtsDbContext>(options =>
             options.UseSqlServer(
-                builder.Configuration.GetConnectionString("MtsConnection")));
+                builder.Configuration
+                    .GetConnectionString("MtsConnection")));
+
 
         // =========================================================
-        // Services
+        // Application Services
         // =========================================================
+
         builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+
         builder.Services.AddScoped<AuthService>();
 
+
         // =========================================================
-        // JWT Configuration
+        // JWT Authentication
         // =========================================================
+
         var jwtKey = builder.Configuration["Jwt:Key"];
 
         if (string.IsNullOrWhiteSpace(jwtKey))
@@ -90,7 +128,8 @@ public class Program
         }
 
         builder.Services
-            .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddAuthentication(
+                JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
                 options.TokenValidationParameters =
@@ -113,44 +152,59 @@ public class Program
                     };
             });
 
+
         // =========================================================
         // Build Application
         // =========================================================
+
         var app = builder.Build();
+
 
         // =========================================================
         // OpenAPI / Swagger
         // =========================================================
+
         app.MapOpenApi();
 
         app.UseSwagger();
 
         app.UseSwaggerUI();
 
+
         // =========================================================
         // HTTPS
         // =========================================================
+
         app.UseHttpsRedirection();
+
 
         // =========================================================
         // CORS
         // =========================================================
+
         app.UseCors("MtsReactPolicy");
+
 
         // =========================================================
         // Authentication & Authorization
         // =========================================================
+
         app.UseAuthentication();
+
         app.UseAuthorization();
+
 
         // =========================================================
         // Controllers
         // =========================================================
+
         app.MapControllers();
+
 
         // =========================================================
         // Run Application
         // =========================================================
+
         app.Run();
     }
 }

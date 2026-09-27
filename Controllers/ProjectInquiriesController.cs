@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using MTS_API.Data;
 using MTS_API.DTOs;
 using MTS_API.Models;
+using MTS_API.Services;
 
 namespace MTS_API.Controllers;
 
@@ -14,11 +15,14 @@ namespace MTS_API.Controllers;
 public class ProjectInquiriesController : ControllerBase
 {
     private readonly MtsDbContext _context;
+    private readonly IEmailService _emailService;
 
     public ProjectInquiriesController(
-        MtsDbContext context)
+        MtsDbContext context,
+        IEmailService emailService)
     {
         _context = context;
+        _emailService = emailService;
     }
     // =========================================================
     // CREATE PUBLIC INQUIRY - WEBSITE
@@ -132,6 +136,23 @@ public class ProjectInquiriesController : ControllerBase
         _context.ProjectInquiries.Add(inquiry);
 
         await _context.SaveChangesAsync();
+        try
+        {
+            await _emailService.SendProjectInquiryEmailsAsync(
+                inquiry.ContactName ?? request.FullName.Trim(),
+                inquiry.ContactEmail ?? request.Email.Trim(),
+                inquiry.ContactPhone ?? request.Phone.Trim(),
+                inquiry.CompanyName,
+                inquiry.ServiceRequired ?? request.Service.Trim(),
+                inquiry.Budget,
+                inquiry.Description ?? request.Message.Trim()
+            );
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(
+                $"Project inquiry email failed: {ex.Message}");
+        }
 
         // =========================================================
         // RESPONSE

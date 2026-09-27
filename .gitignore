@@ -12,3 +12,4 @@ appsettings.Local.json
 !.env.example
 publish/
 wwwroot/uploads/
+Properties/PublishProfiles/
